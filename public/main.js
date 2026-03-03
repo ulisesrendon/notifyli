@@ -1,84 +1,126 @@
-function notifyliInit(msgBox){
-    const wsUri = `${window.SERVER_PROTOCOL}://${window.SERVER_DOMAIN}:${window.SERVER_PORT}`;
-    window.websocket = new WebSocket(wsUri);
-    window.websocket.onopen = function (ev) {
-        msgBox.innerHTML += `<div class="system_msg" style="color:#bbbbbb">Connected! - ${wsUri}</div>`;
-        window.websocket.send(JSON.stringify({
-            message: '...',
-            name: document.querySelector('#name').value,
-            room: window.room ?? 1,
-            type: 'keepalive'
-        }));
+function chatApp() {
+    return {
+        messages: [],
+        userForm: {
+            name: '',
+            message: ''
+        },
+        websocket: null,
+        wsUri: '',
+        connectionStatus: 'disconnected',
+        room: window.room ?? 1,
+        keepaliveInterval: null,
 
-        setInterval(function () {
-            window.websocket.send(JSON.stringify({
-                message: '...',
-                name: document.querySelector('#name').value,
-                room: window.room ?? 1,
-                type: 'keepalive'
-            }));
-        },30000);
-    }
-    window.websocket.onerror = function (ev) {
-        msgBox.innerHTML += '<div class="system_error">Error Occurred - ' + ev.data + '</div>';
-    };
-    window.websocket.onclose = function (ev) {
-        msgBox.innerHTML += '<div class="system_msg">Connection Closed</div>';
-        notifyliInit(msgBox);
-    };
-    window.websocket.onmessage = function (ev) {
-        const response = JSON.parse(ev.data);
-        const res_type = response.type ?? 'usermsg'; //message type
-        const user_message = response.message; //message text
-        const user_name = response.name; //user name
+        init() {
+            this.wsUri = `${window.SERVER_PROTOCOL}://${window.SERVER_DOMAIN}:${window.SERVER_PORT}`;
+            this.connectWebSocket();
+        },
 
-        switch (res_type) {
-            case '':
-            case 'msg':
-            case 'usermsg':
-                msgBox.innerHTML += '<div><span class="user_name" style="color:purple">' + user_name + '</span> : <span class="user_message">' + user_message + '</span></div>';
-                msgBox.scrollTop = msgBox.scrollHeight; //scroll message
-                break;
-            case 'system':
-                msgBox.innerHTML += '<div style="color:#bbbbbb">' + user_message + '</div>';
-                msgBox.scrollTop = msgBox.scrollHeight; //scroll message
-                break;
+        connectWebSocket() {
+            try {
+                this.websocket = new WebSocket(this.wsUri);
+
+                this.websocket.onopen = (ev) => {
+                    this.connectionStatus = 'connected';
+                    this.addSystemMessage('Connected to server');
+                    this.sendKeepalive();
+
+                    this.keepaliveInterval = setInterval(() => {
+                        this.sendKeepalive();
+                    }, 30000);
+                };
+
+                this.websocket.onerror = (ev) => {
+                    this.connectionStatus = 'error';
+                    this.addSystemMessage('Connection error occurred');
+                };
+
+                this.websocket.onclose = (ev) => {
+                    this.connectionStatus = 'disconnected';
+                    this.addSystemMessage('Connection closed, reconnecting...');
+                    if (this.keepaliveInterval) {
+                        clearInterval(this.keepaliveInterval);
+                    }
+                    // Retry connection after 3 seconds
+                    setTimeout(() => this.connectWebSocket(), 3000);
+                };
+
+                this.websocket.onmessage = (ev) => {
+                    try {
+                        const response = JSON.parse(ev.data);
+                        const res_type = response.type ?? 'usermsg';
+
+                        if (res_type === 'usermsg' || res_type === 'msg' || res_type === '') {
+                            this.messages.push({
+                                type: 'usermsg',
+                                name: response.name,
+                                message: response.message
+                            });
+                        } else if (res_type === 'system') {
+                            this.addSystemMessage(response.message);
+                        }
+
+                        this.$nextTick(() => {
+                            const msgBox = document.querySelector('.message-box');
+                            if (msgBox) {
+                                msgBox.scrollTop = msgBox.scrollHeight;
+                            }
+                        });
+                    } catch (e) {
+                        console.error('Error parsing message:', e);
+                    }
+                };
+            } catch (e) {
+                console.error('WebSocket error:', e);
+                this.connectionStatus = 'error';
+            }
+        },
+
+        sendKeepalive() {
+            if (this.websocket && this.websocket.readyState === WebSocket.OPEN) {
+                this.websocket.send(JSON.stringify({
+                    message: '...',
+                    name: this.userForm.name || 'Anonymous',
+                    room: this.room,
+                    type: 'keepalive'
+                }));
+            }
+        },
+
+        sendMessage() {
+            if (!this.userForm.message.trim()) {
+                return;
+            }
+            if (!this.userForm.name.trim()) {
+                alert('Please enter your name');
+                return;
+            }
+
+            if (this.websocket && this.websocket.readyState === WebSocket.OPEN) {
+                this.websocket.send(JSON.stringify({
+                    message: this.userForm.message,
+                    name: this.userForm.name,
+                    room: this.room,
+                    type: 'usermsg'
+                }));
+                this.userForm.message = '';
+            } else {
+                alert('Not connected to server');
+            }
+        },
+
+        addSystemMessage(text) {
+            this.messages.push({
+                type: 'system',
+                message: text,
+                name: 'System'
+            });
+            this.$nextTick(() => {
+                const msgBox = document.querySelector('.message-box');
+                if (msgBox) {
+                    msgBox.scrollTop = msgBox.scrollHeight;
+                }
+            });
         }
     };
 }
-
-window.addEventListener("load", function () {
-    const msgBox = document.querySelector("#message-box");
-    const message_input = document.querySelector('#message');
-    const name_input = document.querySelector('#name');
-
-    notifyliInit(msgBox);
-
-    document.querySelector('#send-message').addEventListener('click', send_message);
-
-    document.querySelector('#message').addEventListener("keydown", function (event) {
-        if (event.which == 13) {
-            send_message();
-        }
-    });
-
-    function send_message() {
-        if (message_input.value == "") {
-            //alert("Enter Some message please!");
-            return;
-        }
-        if (name_input.value == "") {
-            alert("Enter your Name Please!");
-            return;
-        }
-
-        window.websocket.send(JSON.stringify({
-            message: message_input.value,
-            name: name_input.value,
-            room: window.room ?? 1,
-            type: 'usermsg'
-        }));
-        message_input.value = ''; //reset message input
-        message_input.focus();
-    }
-});

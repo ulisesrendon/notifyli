@@ -1,44 +1,16 @@
-.chat-wrapper {
-    font: bold 11px/normal 'lucida grande', tahoma, verdana, arial, sans-serif;
-    background: #00a6bb;
-    padding: 20px;
-    margin: 20px auto;
-    box-shadow: 2px 2px 2px 0px #00000017;
-    max-width: 700px;
-    min-width: 500px;
+/* Custom animations */
+@keyframes fade-in {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
 
-#message-box {
-    width: 97%;
-    display: inline-block;
-    height: 300px;
-    background: #fff;
-    box-shadow: inset 0px 0px 2px #00000017;
-    overflow: auto;
-    padding: 10px;
+.animate-fade-in {
+    animation: fade-in 0.3s ease-in-out;
 }
 
-.user-panel {
-    margin-top: 10px;
-}
-
-input[type=text] {
-    border: none;
-    padding: 5px 5px;
-    box-shadow: 2px 2px 2px #0000001c;
-}
-
-input[type=text]#name {
-    width: 20%;
-}
-
-input[type=text]#message {
-    width: 60%;
-}
-
-button#send-message {
-    border: none;
-    padding: 5px 15px;
-    background: #11e0fb;
-    box-shadow: 2px 2px 2px #0000001c;
-}
