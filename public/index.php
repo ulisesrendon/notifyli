@@ -1,9 +1,32 @@
-<?php require '../config/app.php'; ?>
+<?php
+/**
+ * EXAMPLE: Web UI Client
+ *
+ * This is a reference implementation demonstrating:
+ * - User authentication with user_id and room
+ * - WebSocket connection establishment
+ * - Real-time message sending/receiving
+ * - Notification handling from external systems
+ *
+ * Adapt this to your application:
+ * - Integrate with your authentication system
+ * - Replace user_id input with actual user session data
+ * - Customize UI/UX to match your application design
+ * - Add error handling and reconnection logic
+ * - Implement proper security measures
+ *
+ * Cloud Deployment:
+ *   Serve via Nginx + PHP-FPM (see README Cloud Deployment)
+ *   Configure WebSocket proxy to your WebSocket server
+ */
+
+require '../config/app.php';
+?>
 <!DOCTYPE html>
 <html>
 <head>
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Notifyli</title>
+    <title>Notifyli - Example Client</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/alpinejs" defer></script>
     <style>

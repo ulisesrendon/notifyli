@@ -1,5 +1,22 @@
 <?php
 
+/**
+ * EXAMPLE: WebSocket Server Initialization
+ *
+ * This is a reference implementation showing how to initialize and run
+ * the WebSocket messaging server. Adapt this to your environment:
+ *
+ * - Configure host, port, and Redis settings from your .env
+ * - Run as a daemon using systemd or supervisor (see README Cloud Deployment)
+ * - Monitor logs and restart automatically on failure
+ *
+ * Production Usage:
+ *   systemctl start notifyli-websocket.service
+ *
+ * Development Usage:
+ *   php -q server.php
+ */
+
 use Neuralpin\Notifyli\MessagingServer;
 
 require __DIR__.'/config/app.php';

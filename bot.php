@@ -1,5 +1,26 @@
 <?php
 
+/**
+ * EXAMPLE: Notification Messenger Bot
+ *
+ * This is a reference implementation of the notification bridge that:
+ * - Connects to the WebSocket server
+ * - Subscribes to Redis pub/sub channel 'notifyli:messages'
+ * - Forwards notifications to connected users
+ *
+ * Adapt this to your environment:
+ * - Configure connection settings in .env
+ * - Run as a daemon using systemd or supervisor (see README Cloud Deployment)
+ * - Implement custom logic for offline notification handling
+ * - Add logging and monitoring as needed
+ *
+ * Production Usage:
+ *   systemctl start notifyli-bot.service
+ *
+ * Development Usage:
+ *   php -q bot.php
+ */
+
 use Neuralpin\Notifyli\Clients\ReusableWebSocketClient;
 use Neuralpin\Notifyli\Services\RedisMessageBroker;
 use Predis\Client as RedisClient;
