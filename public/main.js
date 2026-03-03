@@ -1,8 +1,8 @@
-function wsChat(msgBox){
+function notifyliInit(msgBox){
     const wsUri = `${window.SERVER_PROTOCOL}://${window.SERVER_DOMAIN}:${window.SERVER_PORT}`;
     window.websocket = new WebSocket(wsUri);
     window.websocket.onopen = function (ev) {
-        msgBox.innerHTML += '<div class="system_msg" style="color:#bbbbbb">Connected! - Welcome to "El farma Chat"</div>';
+        msgBox.innerHTML += `<div class="system_msg" style="color:#bbbbbb">Connected! - ${wsUri}</div>`;
         window.websocket.send(JSON.stringify({
             message: '...',
             name: document.querySelector('#name').value,
@@ -24,7 +24,7 @@ function wsChat(msgBox){
     };
     window.websocket.onclose = function (ev) {
         msgBox.innerHTML += '<div class="system_msg">Connection Closed</div>';
-        wsChat(msgBox);
+        notifyliInit(msgBox);
     };
     window.websocket.onmessage = function (ev) {
         const response = JSON.parse(ev.data);
@@ -44,7 +44,7 @@ function wsChat(msgBox){
                 msgBox.scrollTop = msgBox.scrollHeight; //scroll message
                 break;
         }
-    };    
+    };
 }
 
 window.addEventListener("load", function () {
@@ -52,7 +52,7 @@ window.addEventListener("load", function () {
     const message_input = document.querySelector('#message');
     const name_input = document.querySelector('#name');
 
-    wsChat(msgBox);
+    notifyliInit(msgBox);
 
     document.querySelector('#send-message').addEventListener('click', send_message);
 

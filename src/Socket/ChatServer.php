@@ -18,8 +18,8 @@ class ChatServer
 
     public function __construct(
         string $host = 'localhost',
-        string $location,
-        int $port,
+        string $location = 'localhost',
+        int $port = 7000,
     )
     {
         $this->host = $host;
@@ -59,7 +59,7 @@ class ChatServer
         socket_set_option($socket, SOL_SOCKET, SO_REUSEADDR, 1);
 
         //bind socket to specified host
-        socket_bind($socket, 0, $this->port);
+        socket_bind($socket, '0.0.0.0', $this->port);
 
         //listen to port
         socket_listen($socket);

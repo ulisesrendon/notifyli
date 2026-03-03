@@ -1,5 +1,5 @@
 {
-    "name": "ulisesrendon/chat",
+    "name": "ulisesrendon/Chatapp",
     "description": "websocket chat app",
     "type": "project",
     "license": "private",
@@ -16,12 +16,14 @@
     ],
     "minimum-stability": "dev",
     "require": {
-        "illuminate/database": "*",
         "vlucas/phpdotenv": "*",
         "paragi/php-websocket-client": "dev-master"
     },
     "scripts": {
-        "ws-server": "php -q server.php &"
+        "ws-server": "php -q server.php &",
+        "post-install-cmd": [
+            "@php -r \"file_exists('.env') || copy('.env.example', '.env');\""
+        ]
     },
     "require-dev": {
         "symfony/var-dumper": "7.0.x-dev"
