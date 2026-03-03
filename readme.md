@@ -7,6 +7,11 @@ Run the socket process
 php -q server.php
 ```
 
+Run the reusable websocket bot (room 1 auto-reply on `hello`)
+```shell
+php -q bot.php
+```
+
 For docker:
 ```shell
 docker compose exec php-fpm php -q /var/www/html/chat/server.php
@@ -131,4 +136,16 @@ systemctl enable chat.service
 6. Add cronjob to restart service to avoid some problems
 ```shell
 0 0 * * * sudo service chat restart
+```
+
+## Supervisor bot example
+
+```ini
+[program:notifyli-bot]
+command=/usr/bin/php -q /var/www/chat/bot.php
+directory=/var/www/chat
+autostart=true
+autorestart=true
+stderr_logfile=/var/log/supervisor/notifyli-bot.err.log
+stdout_logfile=/var/log/supervisor/notifyli-bot.out.log
 ```

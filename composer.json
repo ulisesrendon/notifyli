@@ -1,11 +1,16 @@
 {
     "name": "neuralpin/notifyli",
-    "description": "websocket chat app",
+    "description": "Websocket communication app",
     "type": "project",
     "license": "private",
     "autoload": {
         "psr-4": {
             "Neuralpin\\Notifyli\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Tests\\": "tests/"
         }
     },
     "authors": [
@@ -16,8 +21,7 @@
     ],
     "minimum-stability": "dev",
     "require": {
-        "vlucas/phpdotenv": "*",
-        "paragi/php-websocket-client": "dev-master"
+        "vlucas/phpdotenv": "*"
     },
     "scripts": {
         "ws-server": "php -q server.php &",
@@ -26,6 +30,13 @@
         ]
     },
     "require-dev": {
-        "symfony/var-dumper": "7.0.x-dev"
+        "symfony/var-dumper": "7.0.x-dev",
+        "pestphp/pest": "5.x-dev",
+        "pestphp/pest-plugin-arch": "5.x-dev"
+    },
+    "config": {
+        "allow-plugins": {
+            "pestphp/pest-plugin": true
+        }
     }
 }
