@@ -1,11 +1,11 @@
 <?php
 
-namespace Chatapp\Socket;
+namespace Neuralpin\Notifyli;
 
-use resource;
 use Socket;
+use resource;
 
-class ChatServer
+class MessagingServer
 {
     protected bool|resource|Socket $socket;
     protected array $clients;
@@ -48,7 +48,7 @@ class ChatServer
 
     /**
      * Creates and returns a Socket instance
-     * @return bool|\Socket
+     * @return bool|Socket
      */
     public function socketCreate(): bool|Socket
     {

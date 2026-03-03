@@ -1,11 +1,11 @@
 {
-    "name": "ulisesrendon/Chatapp",
+    "name": "neuralpin/notifyli",
     "description": "websocket chat app",
     "type": "project",
     "license": "private",
     "autoload": {
         "psr-4": {
-            "Chatapp\\": "src/"
+            "Neuralpin\\Notifyli\\": "src/"
         }
     },
     "authors": [

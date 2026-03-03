@@ -1,6 +1,6 @@
 <?php
 
-namespace Chatapp\Shared;
+namespace Neuralpin\Notifyli\Shared;
 
 class LogHelper
 {
