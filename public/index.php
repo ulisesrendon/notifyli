@@ -86,6 +86,30 @@
 
                 <!-- Input Panel -->
                 <div class="space-y-3">
+                    <!-- User ID Input -->
+                    <div class="flex gap-2">
+                        <div class="flex-1">
+                            <label class="text-xs text-gray-400 mb-1 block">User ID</label>
+                            <input
+                                type="number"
+                                x-model.number="userForm.userId"
+                                placeholder="Your User ID"
+                                min="1"
+                                class="w-full px-4 py-3 bg-slate-900/50 border border-purple-500/30 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition"
+                            />
+                        </div>
+                        <div class="flex-1">
+                            <label class="text-xs text-gray-400 mb-1 block">Room</label>
+                            <input
+                                type="text"
+                                x-model="userForm.room"
+                                placeholder="Room ID"
+                                maxlength="10"
+                                class="w-full px-4 py-3 bg-slate-900/50 border border-purple-500/30 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition"
+                            />
+                        </div>
+                    </div>
+
                     <!-- Name Input -->
                     <input
                         type="text"

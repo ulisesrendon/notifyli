@@ -25,6 +25,7 @@ class MessagingServer
     protected RedisStateManager $redisStateManager;
     protected bool $serverSocketClosed = false;
     protected array $clientRooms = []; // Track which room each client is in
+    protected array $clientUserIds = []; // Track user_id for each socket ID (for Redis cleanup)
 
     public function __construct(
         string $host = 'localhost',
@@ -173,13 +174,23 @@ class MessagingServer
             }
 
             $room = (string) $message['room'];
+
+            // For direct_message type, skip user registration and just forward the message
+            $messageType = (string) ($message['type'] ?? '');
+            if ($messageType === 'direct_message') {
+                $this->sendRoomMessage($message);
+                continue;
+            }
+
             $this->clientRooms[$sid] = $room;
 
             $this->roomManager->addClientToRoom($room, $sid);
 
-            // Register connection in Redis
+            // Register connection in Redis using user_id if provided, otherwise use socket ID
             $name = (string) ($message['name'] ?? '');
-            $this->redisStateManager->registerConnection($sid, $room, $name);
+            $userId = (int) ($message['user_id'] ?? $sid);
+            $this->clientUserIds[$sid] = $userId; // Track for cleanup on disconnect
+            $this->redisStateManager->registerConnection($userId, $room, $name);
 
             $this->sendRoomMessage($message);
         }
@@ -222,11 +233,30 @@ class MessagingServer
                 return false;
             }
 
+            $message = $this->frameHandler->encode(json_encode($data));
+
+            // For direct_message type, only send to the specific user
+            if ($data['type'] === 'direct_message' && isset($data['user_id'])) {
+                $targetUserId = (int) $data['user_id'];
+
+                // Find the socket(s) for this user_id
+                foreach ($this->clientUserIds as $sid => $userId) {
+                    if ($userId === $targetUserId && isset($this->clients[$sid])) {
+                        try {
+                            $this->socketAdapter->write($this->clients[$sid], $message, strlen($message));
+                        } catch (\Exception|\Throwable $e) {
+                            // Error writing to client
+                        }
+                    }
+                }
+                return true;
+            }
+
+            // For other message types, broadcast to all clients in the room
             $total = $this->roomManager->getRoomClientCount($data['room']);
             $date = date('Y-m-d H:i:s');
             echo "{$date}: Writing in room {$data['room']}, with {$total} participants\n";
 
-            $message = $this->frameHandler->encode(json_encode($data));
             foreach ($this->roomManager->getRoomClients($data['room']) as $sid) {
                 if (isset($this->clients[$sid])){
                     try{
@@ -252,8 +282,14 @@ class MessagingServer
 
         // Remove from Redis state tracking
         if (isset($this->clientRooms[$sid])) {
-            $this->redisStateManager->removeConnection($sid, $this->clientRooms[$sid]);
+            $userId = $this->clientUserIds[$sid] ?? $sid;
+            $this->redisStateManager->removeConnection($userId, $this->clientRooms[$sid]);
             unset($this->clientRooms[$sid]);
+        }
+
+        // Clean up user ID tracking
+        if (isset($this->clientUserIds[$sid])) {
+            unset($this->clientUserIds[$sid]);
         }
 
         // Remove client from rooms

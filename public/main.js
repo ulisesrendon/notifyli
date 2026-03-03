@@ -2,17 +2,27 @@ function chatApp() {
     return {
         messages: [],
         userForm: {
+            userId: null,
+            room: '1',
             name: '',
             message: ''
         },
         websocket: null,
         wsUri: '',
         connectionStatus: 'disconnected',
-        room: window.room ?? 1,
         keepaliveInterval: null,
 
         init() {
             this.wsUri = `${window.SERVER_PROTOCOL}://${window.SERVER_DOMAIN}:${window.SERVER_PORT}`;
+            // Load userId from localStorage if available
+            const savedUserId = localStorage.getItem('notifyli_user_id');
+            if (savedUserId) {
+                this.userForm.userId = parseInt(savedUserId);
+            }
+            const savedRoom = localStorage.getItem('notifyli_room');
+            if (savedRoom) {
+                this.userForm.room = savedRoom;
+            }
             this.connectWebSocket();
         },
 
@@ -56,6 +66,13 @@ function chatApp() {
                                 name: response.name,
                                 message: response.message
                             });
+                        } else if (res_type === 'direct_message') {
+                            // Direct message from Redis notification system
+                            this.messages.push({
+                                type: 'usermsg',
+                                name: `${response.name} [notification]`,
+                                message: response.message
+                            });
                         } else if (res_type === 'system') {
                             this.addSystemMessage(response.message);
                         }
@@ -81,7 +98,8 @@ function chatApp() {
                 this.websocket.send(JSON.stringify({
                     message: '...',
                     name: this.userForm.name || 'Anonymous',
-                    room: this.room,
+                    user_id: this.userForm.userId || 0,
+                    room: this.userForm.room || '1',
                     type: 'keepalive'
                 }));
             }
@@ -95,12 +113,21 @@ function chatApp() {
                 alert('Please enter your name');
                 return;
             }
+            if (!this.userForm.userId) {
+                alert('Please enter your User ID');
+                return;
+            }
 
             if (this.websocket && this.websocket.readyState === WebSocket.OPEN) {
+                // Save userId and room to localStorage
+                localStorage.setItem('notifyli_user_id', this.userForm.userId);
+                localStorage.setItem('notifyli_room', this.userForm.room);
+
                 this.websocket.send(JSON.stringify({
                     message: this.userForm.message,
                     name: this.userForm.name,
-                    room: this.room,
+                    user_id: this.userForm.userId,
+                    room: this.userForm.room || '1',
                     type: 'usermsg'
                 }));
                 this.userForm.message = '';

@@ -83,7 +83,7 @@ class RedisStateManager
 
         try {
             $key = $this->prefix . $room;
-            $this->redis->hdel($key, (string) $clientId);
+            $this->redis->hdel($key, [(string) $clientId]);
 
             return true;
         } catch (PredisException | \Throwable $e) {
