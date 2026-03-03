@@ -21,7 +21,8 @@
     ],
     "minimum-stability": "dev",
     "require": {
-        "vlucas/phpdotenv": "*"
+        "vlucas/phpdotenv": "*",
+        "predis/predis": "^2.0"
     },
     "scripts": {
         "ws-server": "php -q server.php &",

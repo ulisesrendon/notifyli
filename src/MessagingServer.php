@@ -5,6 +5,7 @@ namespace Neuralpin\Notifyli;
 use Neuralpin\Notifyli\Adapters\SocketAdapter;
 use Neuralpin\Notifyli\Contracts\SocketInterface;
 use Neuralpin\Notifyli\Services\RoomManager;
+use Neuralpin\Notifyli\Services\RedisStateManager;
 use Neuralpin\Notifyli\Services\WebSocketFrameHandler;
 use Socket;
 
@@ -21,7 +22,9 @@ class MessagingServer
     protected SocketInterface $socketAdapter;
     protected RoomManager $roomManager;
     protected WebSocketFrameHandler $frameHandler;
+    protected RedisStateManager $redisStateManager;
     protected bool $serverSocketClosed = false;
+    protected array $clientRooms = []; // Track which room each client is in
 
     public function __construct(
         string $host = 'localhost',
@@ -30,6 +33,12 @@ class MessagingServer
         ?SocketInterface $socketAdapter = null,
         ?RoomManager $roomManager = null,
         ?WebSocketFrameHandler $frameHandler = null,
+        ?RedisStateManager $redisStateManager = null,
+        bool $redisEnabled = false,
+        string $redisHost = '127.0.0.1',
+        int $redisPort = 6379,
+        ?string $redisPassword = null,
+        string $redisPrefix = 'notifyli:connections:',
     )
     {
         $this->host = $host;
@@ -42,6 +51,13 @@ class MessagingServer
         $this->socketAdapter = $socketAdapter ?? new SocketAdapter();
         $this->roomManager = $roomManager ?? new RoomManager();
         $this->frameHandler = $frameHandler ?? new WebSocketFrameHandler();
+        $this->redisStateManager = $redisStateManager ?? new RedisStateManager(
+            enabled: $redisEnabled,
+            host: $redisHost,
+            port: $redisPort,
+            password: $redisPassword,
+            prefix: $redisPrefix,
+        );
 
         /* Allow the script to hang around waiting for connections. */
         set_time_limit(0);
@@ -67,6 +83,9 @@ class MessagingServer
                 // already closed
             }
         }
+
+        // Close Redis connection
+        $this->redisStateManager->close();
 
         $this->serverSocketClosed = true;
     }
@@ -153,7 +172,15 @@ class MessagingServer
                 continue;
             }
 
-            $this->roomManager->addClientToRoom((string) $message['room'], $sid);
+            $room = (string) $message['room'];
+            $this->clientRooms[$sid] = $room;
+
+            $this->roomManager->addClientToRoom($room, $sid);
+
+            // Register connection in Redis
+            $name = (string) ($message['name'] ?? '');
+            $this->redisStateManager->registerConnection($sid, $room, $name);
+
             $this->sendRoomMessage($message);
         }
     }
@@ -223,6 +250,12 @@ class MessagingServer
             return;
         }
 
+        // Remove from Redis state tracking
+        if (isset($this->clientRooms[$sid])) {
+            $this->redisStateManager->removeConnection($sid, $this->clientRooms[$sid]);
+            unset($this->clientRooms[$sid]);
+        }
+
         // Remove client from rooms
         $this->roomManager->removeClient($sid);
 
@@ -259,6 +292,14 @@ class MessagingServer
     public function getClients(): array
     {
         return $this->clients;
+    }
+
+    /**
+     * Get Redis state manager for testing
+     */
+    public function getRedisStateManager(): RedisStateManager
+    {
+        return $this->redisStateManager;
     }
 
     public function __destruct()
