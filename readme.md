@@ -1,4 +1,4 @@
-# Websocket based chat app
+# Websocket communication app
 
 ## Local Running:
 
@@ -17,9 +17,7 @@ For docker:
 docker compose exec php-fpm php -q /var/www/html/chat/server.php
 ```
 
-Go website
-
-Visit http://chat.localhost
+Go http://chat.localhost for visualizing UI connecting to the server (public/index.php)
 
 
 ## Cloud deploy:

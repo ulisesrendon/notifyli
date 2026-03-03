@@ -2,7 +2,7 @@
     "name": "neuralpin/notifyli",
     "description": "Websocket communication app",
     "type": "project",
-    "license": "private",
+    "license": "GPL-3.0-or-later",
     "autoload": {
         "psr-4": {
             "Neuralpin\\Notifyli\\": "src/"
