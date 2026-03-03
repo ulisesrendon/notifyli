@@ -10,15 +10,15 @@
  *
  * Adapt this to your environment:
  * - Configure connection settings in .env
- * - Run as a daemon using systemd or supervisor (see README Cloud Deployment)
+ * - Run as a daemon using Supervisor (see README Cloud Deployment)
  * - Implement custom logic for offline notification handling
  * - Add logging and monitoring as needed
  *
  * Production Usage:
- *   systemctl start notifyli-bot.service
+ *   supervisorctl start notifyli-notification-bridge
  *
  * Development Usage:
- *   php -q bot.php
+ *   php -q notification-bridge.php
  */
 
 use Neuralpin\Notifyli\Clients\ReusableWebSocketClient;
@@ -182,7 +182,7 @@ while (true) {
             }
         }
     } catch (\Throwable $e) {
-        echo '[' . date('Y-m-d H:i:s') . '] Bot error: ' . $e->getMessage() . "\n";
+        echo '[' . date('Y-m-d H:i:s') . '] Notification bridge error: ' . $e->getMessage() . "\n";
     } finally {
         // Cleanup Redis subscription
         if ($pubsub !== null) {

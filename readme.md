@@ -26,7 +26,7 @@ This repository includes three example implementations that demonstrate how to i
 
 - **`server.php`** - Example WebSocket server initialization. Demonstrates how to configure and start the messaging server with your environment settings.
 
-- **`bot.php`** - Example notification messenger implementation. Shows how to listen to Redis pub/sub and forward notifications to connected users via WebSocket.
+- **`notification-bridge.php`** - Example notification bridge implementation. Shows how to listen to Redis pub/sub and forward notifications to connected users via WebSocket.
 
 - **`public/index.php`** - Example client UI implementation. Demonstrates user authentication with `user_id`, room selection, and real-time message handling.
 
@@ -59,7 +59,7 @@ This guide covers deploying all three components in a production cloud environme
                               ├──►  Redis Pub/Sub
                               │
                  ┌────────────┴────────────┐
-                 │   bot.php daemon        │
+                 │ notification-bridge.php │
                  │  (Notification Bridge)  │
                  └─────────────────────────┘
 ```
@@ -118,7 +118,7 @@ REDIS_HOST=127.0.0.1
 REDIS_PORT=6379
 REDIS_PASSWORD=
 
-# Bot Configuration
+# Notification Bridge Configuration
 BOT_NAME=NotificationBot
 BOT_ROOM=1
 ```
@@ -254,88 +254,7 @@ sudo ufw enable
 sudo ufw status
 ```
 
-### Step 7: Create Systemd Service for WebSocket Server
-
-Create `/etc/systemd/system/notifyli-websocket.service`:
-
-```ini
-[Unit]
-Description=Notifyli WebSocket Server (server.php)
-Documentation=https://github.com/your-repo/notifyli
-After=network.target redis-server.service
-Requires=redis-server.service
-
-[Service]
-Type=simple
-User=www-data
-Group=www-data
-WorkingDirectory=/var/www/notifyli
-ExecStart=/usr/bin/php -q /var/www/notifyli/server.php
-
-# Restart policy
-Restart=always
-RestartSec=10
-
-# Logging
-StandardOutput=append:/var/log/notifyli/websocket-server.log
-StandardError=append:/var/log/notifyli/websocket-server-error.log
-
-# Security hardening
-NoNewPrivileges=true
-PrivateTmp=true
-ProtectSystem=strict
-ProtectHome=true
-ReadWritePaths=/var/www/notifyli/logs /var/log/notifyli
-
-# Resource limits (adjust as needed)
-LimitNOFILE=65536
-
-[Install]
-WantedBy=multi-user.target
-```
-
-### Step 8: Create Systemd Service for Notification Bot
-
-Create `/etc/systemd/system/notifyli-bot.service`:
-
-```ini
-[Unit]
-Description=Notifyli Notification Messenger (bot.php)
-Documentation=https://github.com/your-repo/notifyli
-After=network.target redis-server.service notifyli-websocket.service
-Requires=redis-server.service
-Wants=notifyli-websocket.service
-
-[Service]
-Type=simple
-User=www-data
-Group=www-data
-WorkingDirectory=/var/www/notifyli
-ExecStart=/usr/bin/php -q /var/www/notifyli/bot.php
-
-# Restart policy
-Restart=always
-RestartSec=10
-
-# Logging
-StandardOutput=append:/var/log/notifyli/notification-bot.log
-StandardError=append:/var/log/notifyli/notification-bot-error.log
-
-# Security hardening
-NoNewPrivileges=true
-PrivateTmp=true
-ProtectSystem=strict
-ProtectHome=true
-ReadWritePaths=/var/www/notifyli/logs /var/log/notifyli
-
-# Resource limits
-LimitNOFILE=4096
-
-[Install]
-WantedBy=multi-user.target
-```
-
-### Step 9: Create Log Directories
+### Step 7: Create Log Directories
 
 ```bash
 # Create log directory
@@ -346,72 +265,10 @@ sudo chown -R www-data:www-data /var/log/notifyli
 sudo chmod 755 /var/log/notifyli
 ```
 
-### Step 10: Enable and Start Services
+### Step 8: Configure Supervisor
 
+Install Supervisor:
 ```bash
-# Reload systemd configuration
-sudo systemctl daemon-reload
-
-# Enable services to start on boot
-sudo systemctl enable notifyli-websocket.service
-sudo systemctl enable notifyli-bot.service
-
-# Start services
-sudo systemctl start notifyli-websocket.service
-sudo systemctl start notifyli-bot.service
-
-# Check status
-sudo systemctl status notifyli-websocket.service
-sudo systemctl status notifyli-bot.service
-```
-
-### Step 11: Verify Deployment
-
-```bash
-# Check WebSocket server is listening
-sudo netstat -tulpn | grep :7000
-
-# Check logs
-sudo journalctl -u notifyli-websocket.service -f
-sudo journalctl -u notifyli-bot.service -f
-
-# Or check log files
-sudo tail -f /var/log/notifyli/websocket-server.log
-sudo tail -f /var/log/notifyli/notification-bot.log
-
-# Test Redis connection
-redis-cli ping
-
-# Monitor Redis pub/sub
-redis-cli SUBSCRIBE notifyli:messages
-```
-
-### Managing Services
-
-```bash
-# Start services
-sudo systemctl start notifyli-websocket.service notifyli-bot.service
-
-# Stop services
-sudo systemctl stop notifyli-websocket.service notifyli-bot.service
-
-# Restart services
-sudo systemctl restart notifyli-websocket.service notifyli-bot.service
-
-# View logs
-sudo journalctl -u notifyli-websocket.service -n 100
-sudo journalctl -u notifyli-bot.service -n 100
-
-# Follow logs in real-time
-sudo journalctl -u notifyli-websocket.service -f
-```
-
-### Alternative: Supervisor (Instead of Systemd)
-
-If you prefer Supervisor over Systemd:
-
-```bash
-# Install supervisor
 sudo apt install -y supervisor
 ```
 
@@ -430,20 +287,21 @@ stderr_logfile=/var/log/notifyli/websocket-server-error.log
 stopasgroup=true
 killasgroup=true
 
-[program:notifyli-bot]
-command=/usr/bin/php -q /var/www/notifyli/bot.php
+[program:notifyli-notification-bridge]
+command=/usr/bin/php -q /var/www/notifyli/notification-bridge.php
 directory=/var/www/notifyli
 user=www-data
 autostart=true
 autorestart=true
 redirect_stderr=true
-stdout_logfile=/var/log/notifyli/notification-bot.log
-stderr_logfile=/var/log/notifyli/notification-bot-error.log
+stdout_logfile=/var/log/notifyli/notification-bridge.log
+stderr_logfile=/var/log/notifyli/notification-bridge-error.log
 stopasgroup=true
 killasgroup=true
 ```
 
-Enable and start:
+### Step 9: Enable and Start Services
+
 ```bash
 # Reload supervisor
 sudo supervisorctl reread
@@ -451,21 +309,59 @@ sudo supervisorctl update
 
 # Start programs
 sudo supervisorctl start notifyli-websocket
-sudo supervisorctl start notifyli-bot
+sudo supervisorctl start notifyli-notification-bridge
 
 # Check status
 sudo supervisorctl status
+```
+
+### Step 10: Verify Deployment
+
+```bash
+# Check WebSocket server is listening
+sudo netstat -tulpn | grep :7000
+
+# Check logs
+sudo supervisorctl tail -f notifyli-websocket
+sudo supervisorctl tail -f notifyli-notification-bridge
+
+# Or check log files
+sudo tail -f /var/log/notifyli/websocket-server.log
+sudo tail -f /var/log/notifyli/notification-bridge.log
+
+# Test Redis connection
+redis-cli ping
+
+# Monitor Redis pub/sub
+redis-cli SUBSCRIBE notifyli:messages
+```
+
+### Managing Services
+
+```bash
+# Start services
+sudo supervisorctl start notifyli-websocket notifyli-notification-bridge
+
+# Stop services
+sudo supervisorctl stop notifyli-websocket notifyli-notification-bridge
+
+# Restart services
+sudo supervisorctl restart notifyli-websocket notifyli-notification-bridge
 
 # View logs
+sudo tail -n 100 /var/log/notifyli/websocket-server.log
+sudo tail -n 100 /var/log/notifyli/notification-bridge.log
+
+# Follow logs in real-time
 sudo supervisorctl tail -f notifyli-websocket
-sudo supervisorctl tail -f notifyli-bot
+sudo supervisorctl tail -f notifyli-notification-bridge
 ```
 
 ### Maintenance & Monitoring
 
-**Daily Restart (Optional)**
+**Daily Restart (Required)**
 
-Create a cron job to restart services daily at 3 AM:
+Create a cron job to restart services daily at 3 AM to mitigate PHP daemon memory growth over time:
 
 ```bash
 sudo crontab -e
@@ -474,7 +370,7 @@ sudo crontab -e
 Add:
 ```cron
 # Restart Notifyli services daily at 3 AM
-0 3 * * * systemctl restart notifyli-websocket.service notifyli-bot.service
+0 3 * * * supervisorctl restart notifyli-websocket notifyli-notification-bridge
 ```
 
 **Log Rotation**
@@ -492,8 +388,8 @@ Create `/etc/logrotate.d/notifyli`:
     create 0644 www-data www-data
     sharedscripts
     postrotate
-        systemctl reload notifyli-websocket.service > /dev/null 2>&1 || true
-        systemctl reload notifyli-bot.service > /dev/null 2>&1 || true
+        supervisorctl restart notifyli-websocket > /dev/null 2>&1 || true
+        supervisorctl restart notifyli-notification-bridge > /dev/null 2>&1 || true
     endscript
 }
 ```
@@ -502,12 +398,12 @@ Create `/etc/logrotate.d/notifyli`:
 
 ```bash
 # Check service health
-systemctl is-active notifyli-websocket.service
-systemctl is-active notifyli-bot.service
+supervisorctl status notifyli-websocket
+supervisorctl status notifyli-notification-bridge
 
 # Monitor resource usage
 top -p $(pgrep -f "server.php")
-top -p $(pgrep -f "bot.php")
+top -p $(pgrep -f "notification-bridge.php")
 
 # Check Redis memory usage
 redis-cli INFO memory
@@ -665,6 +561,42 @@ await publisher.publish('notifyli:messages', JSON.stringify(notification));
 | `from` | string | ✗ | Sender identifier (default: "system") |
 | `timestamp` | int | ✗ | Unix timestamp |
 
+### External Redis Check by `client_id`
+
+If your external system is connected to the same Redis instance, you can detect active users by searching `client_id` inside the room hashes (`notifyli:connections:{room}`).
+
+**Single room check**:
+```bash
+redis-cli HGETALL notifyli:connections:/user/123 | grep '"client_id":"abc123"'
+```
+
+**All rooms check (returns matching room key, user field, and payload)**:
+```bash
+redis-cli EVAL "
+local out = {}
+local cursor = '0'
+repeat
+    local scan = redis.call('SCAN', cursor, 'MATCH', 'notifyli:connections:*', 'COUNT', 100)
+    cursor = scan[1]
+    for _, key in ipairs(scan[2]) do
+        local entries = redis.call('HGETALL', key)
+        for i = 1, #entries, 2 do
+            local field = entries[i]
+            local value = entries[i + 1]
+            if string.find(value, '\"client_id\":\"abc123\"', 1, true) then
+                table.insert(out, key)
+                table.insert(out, field)
+                table.insert(out, value)
+            end
+        end
+    end
+until cursor == '0'
+return out
+" 0
+```
+
+If this returns data, the user session with that `client_id` is currently connected.
+
 ### Testing Notifications (console/send-notification.php)
 
 For development and testing:
@@ -690,20 +622,17 @@ php console/send-notification.php -u 123
 
 ```bash
 # Start services
-sudo systemctl start notifyli-websocket.service notifyli-bot.service
+sudo supervisorctl start notifyli-websocket notifyli-notification-bridge
 
 # Stop services
-sudo systemctl stop notifyli-websocket.service notifyli-bot.service
+sudo supervisorctl stop notifyli-websocket notifyli-notification-bridge
 
 # Restart services
-sudo systemctl restart notifyli-websocket.service notifyli-bot.service
+sudo supervisorctl restart notifyli-websocket notifyli-notification-bridge
 
 # Check service status
-sudo systemctl status notifyli-websocket.service
-sudo systemctl status notifyli-bot.service
-
-# Enable auto-start on boot
-sudo systemctl enable notifyli-websocket.service notifyli-bot.service
+sudo supervisorctl status notifyli-websocket
+sudo supervisorctl status notifyli-notification-bridge
 ```
 
 ### Monitoring
@@ -711,16 +640,16 @@ sudo systemctl enable notifyli-websocket.service notifyli-bot.service
 **Check Service Health**:
 ```bash
 # Check if services are running
-systemctl is-active notifyli-websocket.service
-systemctl is-active notifyli-bot.service
+supervisorctl status notifyli-websocket
+supervisorctl status notifyli-notification-bridge
 
 # View service logs
-sudo journalctl -u notifyli-websocket.service -n 100
-sudo journalctl -u notifyli-bot.service -n 100
+sudo tail -n 100 /var/log/notifyli/websocket-server.log
+sudo tail -n 100 /var/log/notifyli/notification-bridge.log
 
 # Follow logs in real-time
-sudo journalctl -u notifyli-websocket.service -f
-sudo journalctl -u notifyli-bot.service -f
+sudo supervisorctl tail -f notifyli-websocket
+sudo supervisorctl tail -f notifyli-notification-bridge
 ```
 
 **Monitor Redis**:
@@ -780,7 +709,7 @@ sudo systemctl reload nginx
 sudo lsof -i :7000
 
 # Check logs for errors
-sudo journalctl -u notifyli-websocket.service -n 50
+sudo tail -n 50 /var/log/notifyli/websocket-server-error.log
 
 # Verify Redis is running
 systemctl status redis-server
@@ -789,19 +718,19 @@ systemctl status redis-server
 sudo tail -f /var/log/notifyli/websocket-server-error.log
 ```
 
-**Bot Won't Connect**:
+**Notification Bridge Won't Connect**:
 ```bash
 # Ensure WebSocket server is running first
-systemctl status notifyli-websocket.service
+supervisorctl status notifyli-websocket
 
-# Check bot logs
-sudo journalctl -u notifyli-bot.service -n 50
+# Check bridge logs
+sudo tail -n 50 /var/log/notifyli/notification-bridge-error.log
 
 # Verify Redis connectivity
 redis-cli ping
 
 # Check application logs
-sudo tail -f /var/log/notifyli/notification-bot-error.log
+sudo tail -f /var/log/notifyli/notification-bridge-error.log
 ```
 
 **Notifications Not Delivered**:
@@ -812,8 +741,8 @@ redis-cli HGETALL notifyli:connections:1
 # 2. Test Redis pub/sub manually
 redis-cli PUBLISH notifyli:messages '{"user_id":123,"room":"1","message":"Test","from":"Manual"}'
 
-# 3. Check bot is subscribed
-sudo journalctl -u notifyli-bot.service | grep "subscribed"
+# 3. Check bridge is subscribed
+sudo grep "subscribed" /var/log/notifyli/notification-bridge.log
 
 # 4. Verify correct user_id and room
 # User must have connected with matching user_id and room
@@ -822,10 +751,10 @@ sudo journalctl -u notifyli-bot.service | grep "subscribed"
 **High Memory Usage**:
 ```bash
 # Check process memory
-ps aux | grep -E "server.php|bot.php"
+ps aux | grep -E "server.php|notification-bridge.php"
 
-# Restart services (consider scheduling during low traffic)
-sudo systemctl restart notifyli-websocket.service notifyli-bot.service
+# Restart services
+sudo supervisorctl restart notifyli-websocket notifyli-notification-bridge
 
 # Monitor Redis memory
 redis-cli INFO memory
@@ -988,7 +917,7 @@ notifyli/
 │   ├── Adapters/
 │   │   └── SocketAdapter.php            # Socket handling
 │   ├── Clients/
-│   │   └── ReusableWebSocketClient.php  # WebSocket client for bot
+│   │   └── ReusableWebSocketClient.php  # WebSocket client for notification bridge
 │   ├── Contracts/
 │   │   └── SocketInterface.php          # Interface definitions
 │   └── Services/
@@ -1002,7 +931,7 @@ notifyli/
 │   ├── Unit/              # Unit tests
 │   └── Integration/       # Integration tests
 ├── server.php             # Example WebSocket server initialization
-├── bot.php                # Example notification messenger implementation
+├── notification-bridge.php # Example notification bridge implementation
 └── composer.json          # PHP dependencies
 ```
 
@@ -1014,7 +943,7 @@ notifyli/
 - Tracks connections in Redis for notification routing
 - Non-blocking I/O for high concurrency
 
-### 2. Notification Bot (bot.php)
+### 2. Notification Bridge (notification-bridge.php)
 - Subscribes to Redis pub/sub channel `notifyli:messages`
 - Receives notifications from external systems
 - Verifies user is connected before forwarding
@@ -1054,7 +983,7 @@ notifyli/
 - SSL/TLS encryption for WebSocket connections (WSS)
 - Deny access to `.env` and sensitive files in nginx
 - Run services as `www-data` (limited privileges)
-- Systemd security hardening (NoNewPrivileges, ProtectSystem)
+- Supervisor-managed daemons with auto-restart
 - Firewall rules (UFW) to restrict access
 - Redis should bind to 127.0.0.1 (not exposed publicly)
 - Rotate logs to prevent disk exhaustion
@@ -1062,4 +991,4 @@ notifyli/
 
 ## License
 
-This project is open source. See LICENSE file for details.
+This project is licensed under GPL-3.0-or-later.

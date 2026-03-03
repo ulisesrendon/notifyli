@@ -7,11 +7,11 @@
  * the WebSocket messaging server. Adapt this to your environment:
  *
  * - Configure host, port, and Redis settings from your .env
- * - Run as a daemon using systemd or supervisor (see README Cloud Deployment)
+ * - Run as a daemon using Supervisor (see README Cloud Deployment)
  * - Monitor logs and restart automatically on failure
  *
  * Production Usage:
- *   systemctl start notifyli-websocket.service
+ *   supervisorctl start notifyli-websocket
  *
  * Development Usage:
  *   php -q server.php
