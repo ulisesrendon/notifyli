@@ -27,8 +27,8 @@ use Predis\Client as RedisClient;
 
 require __DIR__.'/config/app.php';
 
-$scheme = $_ENV['APP_WS_SERVER_PROTOCOL'] ?? 'ws';
-$host = $_ENV['APP_WS_SERVER_DOMAIN'] ?? 'localhost';
+$scheme = 'ws';
+$host = 'localhost';
 $port = (int) ($_ENV['APP_PORT'] ?? 7000);
 $room = $_ENV['BOT_ROOM'] ?? '1';
 $botName = $_ENV['BOT_NAME'] ?? 'NotifyliBot';
