@@ -47,7 +47,7 @@ class RedisStateManager
     /**
      * Register a user connection in Redis
      */
-    public function registerConnection(int $clientId, string $room, string $name = ''): bool
+    public function registerConnection(string|int $clientId, string $room, string $name = ''): bool
     {
         if (!$this->enabled || $this->redis === null) {
             return false;
@@ -55,6 +55,7 @@ class RedisStateManager
 
         try {
             $key = $this->prefix . $room;
+            $clientId = (string) $clientId;
             $connectionData = json_encode([
                 'client_id' => $clientId,
                 'room' => $room,
@@ -75,7 +76,7 @@ class RedisStateManager
     /**
      * Remove a user connection from Redis
      */
-    public function removeConnection(int $clientId, string $room): bool
+    public function removeConnection(string|int $clientId, string $room): bool
     {
         if (!$this->enabled || $this->redis === null) {
             return false;
@@ -107,7 +108,7 @@ class RedisStateManager
 
             $result = [];
             foreach ($connections as $clientId => $data) {
-                $result[(int) $clientId] = json_decode($data, true);
+                $result[(string) $clientId] = json_decode($data, true);
             }
 
             return $result;

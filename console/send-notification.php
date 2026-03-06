@@ -25,10 +25,12 @@ if (!$userId) {
     exit(1);
 }
 
-if (!is_numeric($userId)) {
-    echo "\n❌ Error: User ID must be a number\n";
+if (!is_scalar($userId) || trim((string) $userId) === '') {
+    echo "\n❌ Error: User ID must be a non-empty string or number\n";
     exit(1);
 }
+
+$userId = trim((string) $userId);
 
 // If message not provided, prompt interactively
 if (!$message) {
@@ -56,12 +58,16 @@ $redisEnabled = (bool) ($_ENV['REDIS_ENABLED'] ?? false);
 $redisHost = $_ENV['REDIS_HOST'] ?? '127.0.0.1';
 $redisPort = (int) ($_ENV['REDIS_PORT'] ?? 6379);
 $redisPassword = $_ENV['REDIS_PASSWORD'] ?? null;
+$redisPrefix = $_ENV['REDIS_PREFIX'] ?? 'notifyli:connections:';
+$redisMessageChannel = $_ENV['REDIS_MESSAGE_CHANNEL'] ?? 'notifyli:messages';
 
 $broker = new RedisMessageBroker(
     enabled: $redisEnabled,
     host: $redisHost,
     port: $redisPort,
     password: $redisPassword,
+    messageChannel: $redisMessageChannel,
+    connectionsPrefix: $redisPrefix,
 );
 
 // Check if Redis is enabled
@@ -72,7 +78,7 @@ if (!$broker->isEnabled()) {
 }
 
 // Check if user is connected
-$isConnected = $broker->isUserConnected((int)$userId, $room);
+$isConnected = $broker->isUserConnected($userId, $room);
 
 echo "\n📨 Sending Notification\n";
 echo str_repeat("-", 50) . "\n";
@@ -85,7 +91,7 @@ echo str_repeat("-", 50) . "\n";
 
 // Publish message to Redis
 $success = $broker->publish(
-    userId: (int)$userId,
+    userId: $userId,
     room: $room,
     message: $message,
     from: $from

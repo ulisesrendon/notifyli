@@ -48,7 +48,7 @@ class RedisMessageBroker
 
     /**
      * Subscribe to message channel and listen for messages
-     * Callback receives: ['user_id' => int, 'room' => string, 'message' => string, 'from' => string]
+        * Callback receives: ['user_id' => string|int, 'room' => string, 'message' => string, 'from' => string]
      */
     public function subscribe(callable $onMessage): void
     {
@@ -89,7 +89,7 @@ class RedisMessageBroker
     /**
      * Post a message to the message channel
      */
-    public function publish(int $userId, string $room, string $message, string $from = 'system'): bool
+    public function publish(string|int $userId, string $room, string $message, string $from = 'system'): bool
     {
         if (!$this->enabled || $this->redis === null) {
             return false;
@@ -97,7 +97,7 @@ class RedisMessageBroker
 
         try {
             $payload = json_encode([
-                'user_id' => $userId,
+                'user_id' => (string) $userId,
                 'room' => $room,
                 'message' => $message,
                 'from' => $from,
@@ -116,7 +116,7 @@ class RedisMessageBroker
     /**
      * Check if a user is connected in a room
      */
-    public function isUserConnected(int $userId, string $room): bool
+    public function isUserConnected(string|int $userId, string $room): bool
     {
         if (!$this->enabled || $this->redis === null) {
             return false;
@@ -134,7 +134,7 @@ class RedisMessageBroker
     /**
      * Get user connection info
      */
-    public function getUserConnection(int $userId, string $room): ?array
+    public function getUserConnection(string|int $userId, string $room): ?array
     {
         if (!$this->enabled || $this->redis === null) {
             return null;

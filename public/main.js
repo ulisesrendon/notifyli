@@ -2,7 +2,7 @@ function chatApp() {
     return {
         messages: [],
         userForm: {
-            userId: null,
+            userId: '',
             room: '1',
             name: '',
             message: ''
@@ -17,7 +17,7 @@ function chatApp() {
             // Load userId from localStorage if available
             const savedUserId = localStorage.getItem('notifyli_user_id');
             if (savedUserId) {
-                this.userForm.userId = parseInt(savedUserId);
+                this.userForm.userId = savedUserId;
             }
             const savedRoom = localStorage.getItem('notifyli_room');
             if (savedRoom) {
@@ -95,13 +95,18 @@ function chatApp() {
 
         sendKeepalive() {
             if (this.websocket && this.websocket.readyState === WebSocket.OPEN) {
-                this.websocket.send(JSON.stringify({
+                const payload = {
                     message: '...',
                     name: this.userForm.name || 'Anonymous',
-                    user_id: this.userForm.userId || 0,
                     room: this.userForm.room || '1',
                     type: 'keepalive'
-                }));
+                };
+
+                if ((this.userForm.userId || '').trim() !== '') {
+                    payload.user_id = this.userForm.userId.trim();
+                }
+
+                this.websocket.send(JSON.stringify(payload));
             }
         },
 
@@ -113,7 +118,7 @@ function chatApp() {
                 alert('Please enter your name');
                 return;
             }
-            if (!this.userForm.userId) {
+            if (!(this.userForm.userId || '').trim()) {
                 alert('Please enter your User ID');
                 return;
             }
@@ -126,7 +131,7 @@ function chatApp() {
                 this.websocket.send(JSON.stringify({
                     message: this.userForm.message,
                     name: this.userForm.name,
-                    user_id: this.userForm.userId,
+                    user_id: this.userForm.userId.trim(),
                     room: this.userForm.room || '1',
                     type: 'usermsg'
                 }));

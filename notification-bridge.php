@@ -40,6 +40,8 @@ $redisEnabled = (bool) ($_ENV['REDIS_ENABLED'] ?? false);
 $redisHost = $_ENV['REDIS_HOST'] ?? '127.0.0.1';
 $redisPort = (int) ($_ENV['REDIS_PORT'] ?? 6379);
 $redisPassword = $_ENV['REDIS_PASSWORD'] ?? null;
+$redisPrefix = $_ENV['REDIS_PREFIX'] ?? 'notifyli:connections:';
+$redisMessageChannel = $_ENV['REDIS_MESSAGE_CHANNEL'] ?? 'notifyli:messages';
 
 // Initialize Redis message broker
 $messageBroker = new RedisMessageBroker(
@@ -47,6 +49,8 @@ $messageBroker = new RedisMessageBroker(
     host: $redisHost,
     port: $redisPort,
     password: $redisPassword,
+    messageChannel: $redisMessageChannel,
+    connectionsPrefix: $redisPrefix,
 );
 
 while (true) {
@@ -136,17 +140,45 @@ while (true) {
 
                         if ($kind === 'message' && $payload) {
                             echo '[' . date('Y-m-d H:i:s') . "] 🔔 Received Redis message\n";
+                            echo '[' . date('Y-m-d H:i:s') . "] 📦 Raw payload: " . substr($payload, 0, 200) . (strlen($payload) > 200 ? '...' : '') . "\n";
+                            echo '[' . date('Y-m-d H:i:s') . "] 📏 Payload length: " . strlen($payload) . " bytes\n";
 
                             $data = json_decode($payload, true);
 
+                            if (!$data) {
+                                $jsonError = json_last_error_msg();
+                                echo '[' . date('Y-m-d H:i:s') . "] ❌ JSON decode failed: " . $jsonError . "\n";
+                                echo '[' . date('Y-m-d H:i:s') . "] 🔧 Raw bytes (first 100): " . bin2hex(substr($payload, 0, 100)) . "\n";
+                                echo '[' . date('Y-m-d H:i:s') . "] 💡 Hint: Ensure your external client uses json_encode(), JSON.stringify(), json.dumps(), etc.\n";
+                                continue;
+                            }
+
+                            echo '[' . date('Y-m-d H:i:s') . "] ✓ JSON decoded. Keys: " . implode(', ', array_keys($data)) . "\n";
+
+                            if (!isset($data['user_id'])) {
+                                echo '[' . date('Y-m-d H:i:s') . "] ❌ Missing 'user_id' in Redis payload. Available keys: " . implode(', ', array_keys($data)) . "\n";
+                                continue;
+                            }
+
                             if ($data && isset($data['user_id'])) {
-                                $userId = (int) $data['user_id'];
+                                $userId = is_scalar($data['user_id']) ? trim((string) $data['user_id']) : '';
                                 $targetRoom = (string) ($data['room'] ?? $room);
                                 $messageText = (string) ($data['message'] ?? '');
                                 $from = (string) ($data['from'] ?? 'system');
 
+                                echo '[' . date('Y-m-d H:i:s') . "] 📌 Parsed: user_id=$userId, room=$targetRoom, from=$from\n";
+
+                                if ($userId === '') {
+                                    echo '[' . date('Y-m-d H:i:s') . "] Invalid user_id in Redis payload. Message skipped.\n";
+                                    continue;
+                                }
+
                                 // Check user connected in the room
-                                if ($messageBroker->isUserConnected($userId, $targetRoom)) {
+                                echo '[' . date('Y-m-d H:i:s') . "] 🔍 Checking if user $userId is connected in room $targetRoom...\n";
+                                $isConnected = $messageBroker->isUserConnected($userId, $targetRoom);
+                                echo '[' . date('Y-m-d H:i:s') . "] " . ($isConnected ? '✅ User IS connected' : '❌ User NOT connected') . "\n";
+
+                                if ($isConnected) {
                                     echo '[' . date('Y-m-d H:i:s') . "] User $userId is connected in room $targetRoom. Forwarding message...\n";
 
                                     // Send message to user through WebSocket

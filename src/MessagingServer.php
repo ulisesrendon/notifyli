@@ -25,7 +25,7 @@ class MessagingServer
     protected RedisStateManager $redisStateManager;
     protected bool $serverSocketClosed = false;
     protected array $clientRooms = []; // Track which room each client is in
-    protected array $clientUserIds = []; // Track user_id for each socket ID (for Redis cleanup)
+    protected array $clientUserIds = []; // Track user_id (string/int) for each socket ID (for Redis cleanup)
 
     public function __construct(
         string $host = 'localhost',
@@ -186,10 +186,18 @@ class MessagingServer
 
             $this->roomManager->addClientToRoom($room, $sid);
 
-            // Register connection in Redis using user_id if provided, otherwise use socket ID
+            // Register connection in Redis using user_id if provided, otherwise keep prior ID or use socket ID
             $name = (string) ($message['name'] ?? '');
-            $userId = (int) ($message['user_id'] ?? $sid);
-            $this->clientUserIds[$sid] = $userId; // Track for cleanup on disconnect
+            $userId = '';
+            if (isset($message['user_id']) && is_scalar($message['user_id'])) {
+                $userId = trim((string) $message['user_id']);
+            }
+
+            if ($userId === '') {
+                $userId = isset($this->clientUserIds[$sid]) ? (string) $this->clientUserIds[$sid] : (string) $sid;
+            }
+
+            $this->clientUserIds[$sid] = $userId;
             $this->redisStateManager->registerConnection($userId, $room, $name);
 
             $this->sendRoomMessage($message);
@@ -237,11 +245,11 @@ class MessagingServer
 
             // For direct_message type, only send to the specific user
             if ($data['type'] === 'direct_message' && isset($data['user_id'])) {
-                $targetUserId = (int) $data['user_id'];
+                $targetUserId = (string) $data['user_id'];
 
                 // Find the socket(s) for this user_id
                 foreach ($this->clientUserIds as $sid => $userId) {
-                    if ($userId === $targetUserId && isset($this->clients[$sid])) {
+                    if ((string) $userId === $targetUserId && isset($this->clients[$sid])) {
                         try {
                             $this->socketAdapter->write($this->clients[$sid], $message, strlen($message));
                         } catch (\Exception|\Throwable $e) {
@@ -282,7 +290,7 @@ class MessagingServer
 
         // Remove from Redis state tracking
         if (isset($this->clientRooms[$sid])) {
-            $userId = $this->clientUserIds[$sid] ?? $sid;
+            $userId = isset($this->clientUserIds[$sid]) ? (string) $this->clientUserIds[$sid] : (string) $sid;
             $this->redisStateManager->removeConnection($userId, $this->clientRooms[$sid]);
             unset($this->clientRooms[$sid]);
         }

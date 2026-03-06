@@ -114,10 +114,10 @@ require '../config/app.php';
                         <div class="flex-1">
                             <label class="text-xs text-gray-400 mb-1 block">User ID</label>
                             <input
-                                type="number"
-                                x-model.number="userForm.userId"
+                                type="text"
+                                x-model="userForm.userId"
                                 placeholder="Your User ID"
-                                min="1"
+                                maxlength="100"
                                 class="w-full px-4 py-3 bg-slate-900/50 border border-purple-500/30 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition"
                             />
                         </div>
@@ -127,7 +127,7 @@ require '../config/app.php';
                                 type="text"
                                 x-model="userForm.room"
                                 placeholder="Room ID"
-                                maxlength="10"
+                                maxlength="120"
                                 class="w-full px-4 py-3 bg-slate-900/50 border border-purple-500/30 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition"
                             />
                         </div>
